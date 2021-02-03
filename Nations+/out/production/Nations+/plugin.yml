@@ -1,0 +1,10 @@
+name: NationsPlus
+version: 0.1
+author: [WallRunner, RZCheng, Duane]
+main: com.wallrunner.NationPlus.Main
+api-version: 1.16
+commands:
+  nation:
+      description: Used to manage your nation
+      usage: /nation
+      permission: nationsplus.nation
