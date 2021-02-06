@@ -8,3 +8,4 @@ commands:
       description: Used to manage your nation
       usage: /nation
       permission: nationsplus.nation
+      aliases: n
