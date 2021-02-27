@@ -14,10 +14,10 @@ public class TestEvents implements Listener {
     public static void onPlayerJoin(PlayerJoinEvent event) {
         Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
         Player player = event.getPlayer();
-        if(sb.getEntryTeam(player.getName()).getDisplayName() == null) {
-            player.sendMessage(ChatColor.GOLD + "You are not part of a nation!");
-        } else {
+        try {
             player.sendMessage(ChatColor.GOLD + "You are part of the nation " + sb.getEntryTeam(player.getName()).getDisplayName() + "!");
+        } catch(Exception IllegalArgumentException) {
+            player.sendMessage(ChatColor.GOLD + "You are not currently a part of a team.");
         }
     }
 }

@@ -24,13 +24,11 @@ import java.io.ObjectOutputStream;
 
 public class CommandNation implements CommandExecutor {
     private Plugin plugin = Main.getPlugin(Main.class);
-    Scoreboard inv = Bukkit.getScoreboardManager().getNewScoreboard();
 
     @Override
     public boolean onCommand(CommandSender Sender, Command Cmd, String Label, String[] args) {
 
         if (Sender instanceof org.bukkit.entity.Player) {
-            Player player = (Player) Sender;
             if (args.length >= 0) {
                 if (args[0].toLowerCase().equals("h") == true) {
                     help(Sender);
@@ -72,6 +70,18 @@ public class CommandNation implements CommandExecutor {
                     } catch(Exception ArrayIndexOutOfBounds) {
                     }
                 }
+                if (args[0].toLowerCase().equals("disband") == true) {
+                    try {
+                        disband(Sender);
+                    } catch(Exception ArrayIndexOutOfBounds) {
+                    }
+                }
+                if (args[0].toLowerCase().equals("leave") == true) {
+                    try {
+                        leave(Sender);
+                    } catch(Exception ArrayIndexOutOfBounds) {
+                    }
+                }
             } else {
                 Sender.sendMessage(ChatColor.RED + "Invalid usage try argument 'help'");
             }
@@ -83,10 +93,13 @@ public class CommandNation implements CommandExecutor {
 
     }
     static void help(CommandSender Sender) {
-            Sender.sendMessage(ChatColor.GOLD + "This is the nation tool");
-            Sender.sendMessage(ChatColor.AQUA + "'h' or 'help' for help");
-            Sender.sendMessage(ChatColor.AQUA + "To create a new nation use 'create'");
+            Sender.sendMessage(ChatColor.GOLD + "This is the nation tool do /nation or /n!");
+            Sender.sendMessage(ChatColor.AQUA + "'h' or 'help' for help.");
+            Sender.sendMessage(ChatColor.AQUA + "To create a new nation use 'create.'");
             Sender.sendMessage(ChatColor.AQUA + "To make a Nation Tag do 'tag' followed by tag and color.");
+            Sender.sendMessage(ChatColor.AQUA + "To invite someone to your nation use 'invite' followed by their name.");
+            Sender.sendMessage(ChatColor.AQUA + "To leave a faction simply do 'leave.'");
+            Sender.sendMessage(ChatColor.AQUA + "To fully remove a nation from the list do 'disband.'");
     }
     public void create(CommandSender Sender, String Name) {
         Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
@@ -94,6 +107,7 @@ public class CommandNation implements CommandExecutor {
             Team newTeam = sb.registerNewTeam(Name);
             newTeam.setDisplayName(Name);
             newTeam.addEntry(Sender.getName());
+            sb.registerNewObjective(sb.getEntryTeam(Sender.getName()).getName(), "dummy", sb.getEntryTeam(Sender.getName()).getName());
             Sender.sendMessage(ChatColor.GOLD + "You have created a new nation! " + newTeam.getDisplayName().toString());
         } catch(Exception IllegalArgumentException) {
             Sender.sendMessage(ChatColor.RED + "This team already exists!");
@@ -129,10 +143,9 @@ public class CommandNation implements CommandExecutor {
         if(Player == null) {
             Sender.sendMessage(ChatColor.RED + "Player could not be found.");
         } else {
-            Player.sendMessage(ChatColor.GREEN + "You have been invited to join " + sb.getEntryTeam(Sender.getName()) + " by " + Sender.getName() + "!");
+            Player.sendMessage(ChatColor.GREEN + "You have been invited to join " + sb.getEntryTeam(Sender.getName()).getDisplayName() + " by " + Sender.getName() + "!");
             Sender.sendMessage(ChatColor.GREEN + "Invite sent to " + Player.getName() + "!");
-            inv.registerNewObjective(sb.getEntryTeam(Sender.getName()).getName(), "dummy", sb.getEntryTeam(Sender.getName()).getName());
-            Objective Obj = inv.getObjective(sb.getEntryTeam(Sender.getName()).getName());
+            Objective Obj = sb.getObjective(sb.getEntryTeam(Sender.getName()).getName());
             Score score = Obj.getScore(Player.getName());
             score.setScore(1);
             //Sender.sendMessage(String.valueOf(score.getScore()));
@@ -150,20 +163,50 @@ public class CommandNation implements CommandExecutor {
         Integer x = 0;
         Sender.sendMessage(String.valueOf(Teamsa.length));
         Sender.sendMessage(Teamsa.toString());
-        while(x >= Teamsa.length) {
+        while(x <= Teamsa.length) {
             Team Select = Teamsa[x];
-            Objective Obj = inv.getObjective(Select.getName());
+            Objective Obj = sb.getObjective(Select.getName());
             Sender.sendMessage(Select.getName());
             if(Obj == null) {
                 Sender.sendMessage("No invites found.");
+                x = x + 1;
             } else {
                 Score score = Obj.getScore(Sender.getName());
                 if(score.getScore() == 1) {
                     score.setScore(0);
-                    Sender.sendMessage("You have successfully joined!");
+                    Sender.sendMessage("You have successfully joined the team: " + ChatColor.BLUE + Select.getDisplayName());
                     Select.addEntry(Sender.getName());
+                    x = x + 500;
+                } else {
+                    x = x + 1;
                 }
             }
+        }
+    }
+    public void disband(CommandSender Sender) {
+        Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+        try {
+            Team team = sb.getEntryTeam(Sender.getName());
+            sb.getObjective(team.getDisplayName()).unregister();
+            String teamName = team.getDisplayName();
+            team.unregister();
+            Sender.sendMessage(ChatColor.GREEN + "Team " + teamName + " successfully disbanded!");
+        } catch (Exception IllegalArgumentException) {
+            Sender.sendMessage(ChatColor.RED + "You are not part of a team!");
+        }
+    }
+    public void leave(CommandSender Sender) {
+        Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+        try {
+            Team team = sb.getEntryTeam(Sender.getName());
+            if(team.getSize() == 1) {
+                disband(Sender);
+                Sender.sendMessage(ChatColor.GOLD + "You were the last person on that team and it is being removed.");
+            } else {
+                team.removeEntry(Sender.getName());
+            }
+        } catch (Exception IllegalArgumentException) {
+            Sender.sendMessage(ChatColor.RED + "You are not part of a team!");
         }
     }
 }

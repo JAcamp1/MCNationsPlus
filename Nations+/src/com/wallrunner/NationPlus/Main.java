@@ -11,6 +11,7 @@ public class Main extends JavaPlugin {
         //Startup
         getServer().getPluginManager().registerEvents(new TestEvents(), this);
         this.getCommand("nation").setExecutor(new CommandNation());
+        this.getCommand("n").setExecutor(new CommandNation());
         getServer().getConsoleSender().sendMessage(ChatColor.GOLD + "{NationsPlus}: Plugin Enabled");
     }
     @Override
