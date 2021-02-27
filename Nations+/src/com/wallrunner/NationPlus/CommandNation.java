@@ -10,10 +10,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Score;
-import org.bukkit.scoreboard.Team;
-import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.*;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -37,11 +34,10 @@ public class CommandNation implements CommandExecutor {
                     help(Sender);
                 }
                 if (args[0].toLowerCase().equals("create") == true) {
-                    //if(args.length == 1) {
-                    create(Sender, args[1]);
-                    //} else {
-                    //    Sender.sendMessage(ChatColor.RED + "Invalid arguments, put in team name.");
-                    //}
+                    try {
+                        create(Sender, args[1]);
+                    } catch (Exception ArrayIndexOutOfBounds) {
+                    }
                 }
                 if (args[0].toLowerCase().equals("tag") == true) {
                     try {
@@ -82,6 +78,13 @@ public class CommandNation implements CommandExecutor {
                     } catch(Exception ArrayIndexOutOfBounds) {
                     }
                 }
+                if (args[0].toLowerCase().equals("promote") == true) {
+                    try {
+                        promote(Sender, args[1]);
+                    } catch(Exception ArrayIndexOutOfBounds) {
+                        Sender.sendMessage(ChatColor.RED + "Please enter a player to promote.");
+                    }
+                }
             } else {
                 Sender.sendMessage(ChatColor.RED + "Invalid usage try argument 'help'");
             }
@@ -100,36 +103,39 @@ public class CommandNation implements CommandExecutor {
             Sender.sendMessage(ChatColor.AQUA + "To invite someone to your nation use 'invite' followed by their name.");
             Sender.sendMessage(ChatColor.AQUA + "To leave a faction simply do 'leave.'");
             Sender.sendMessage(ChatColor.AQUA + "To fully remove a nation from the list do 'disband.'");
+            Sender.sendMessage(ChatColor.AQUA + "As a nations leader you can replace your position by using 'promote'");
     }
     public void create(CommandSender Sender, String Name) {
         Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
         try {
-            Team newTeam = sb.registerNewTeam(Name);
-            newTeam.setDisplayName(Name);
-            newTeam.addEntry(Sender.getName());
-            sb.registerNewObjective(sb.getEntryTeam(Sender.getName()).getName(), "dummy", sb.getEntryTeam(Sender.getName()).getName());
-            Sender.sendMessage(ChatColor.GOLD + "You have created a new nation! " + newTeam.getDisplayName().toString());
+            if (sb.getEntryTeam(Sender.getName()) != null) {
+                Team newTeam = sb.registerNewTeam(Name);
+                newTeam.setDisplayName(Name);
+                newTeam.addEntry(Sender.getName());
+                Player SenderP = Bukkit.getPlayerExact(Sender.getName());
+                SenderP.addScoreboardTag("nleader");
+                sb.registerNewObjective(sb.getEntryTeam(Sender.getName()).getName(), "dummy", sb.getEntryTeam(Sender.getName()).getName());
+                Sender.sendMessage(ChatColor.GOLD + "You have created a new nation! " + newTeam.getDisplayName().toString());
+            } else {
+                Sender.sendMessage(ChatColor.RED + "You are already in a team, please leave or disband.");
+            }
         } catch(Exception IllegalArgumentException) {
             Sender.sendMessage(ChatColor.RED + "This team already exists!");
         }
     }
     public void tag(CommandSender Sender, String Tag, ChatColor Color) {
-        Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
-        Team Team = sb.getEntryTeam(Sender.getName());
-        ArrayList<String> TagList = new ArrayList<String>();
-        TagList.add(Tag);
-        Team.setPrefix(Color + "[" + Tag + "] ");
-        try
-        {
-            FileOutputStream fos = new FileOutputStream("Tags");
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
-            oos.writeObject(TagList);
-            oos.close();
-            fos.close();
+        if(Bukkit.getPlayerExact(Sender.getName()).getScoreboardTags().contains("nleader") == true) {
+            Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+            Team Team = sb.getEntryTeam(Sender.getName());
+            ArrayList<String> TagList = new ArrayList<String>();
+            TagList.add(Tag);
+            Team.setPrefix(Color + "[" + Tag + "] ");
+            Sender.sendMessage(ChatColor.GOLD + "You have successfully set the tag of your nation!");
+        } else {
+            Sender.sendMessage("You must be the nations leader to change its name.");
         }
-        catch (IOException ioe)
-        {
-            ioe.printStackTrace();
+        if(Bukkit.getScoreboardManager().getMainScoreboard().getEntryTeam(Sender.getName()) == null) {
+            Sender.sendMessage(ChatColor.RED + "You are not part of a team!");
         }
     }
     public void color(CommandSender Sender, ChatColor color) {
@@ -145,52 +151,49 @@ public class CommandNation implements CommandExecutor {
         } else {
             Player.sendMessage(ChatColor.GREEN + "You have been invited to join " + sb.getEntryTeam(Sender.getName()).getDisplayName() + " by " + Sender.getName() + "!");
             Sender.sendMessage(ChatColor.GREEN + "Invite sent to " + Player.getName() + "!");
-            Objective Obj = sb.getObjective(sb.getEntryTeam(Sender.getName()).getName());
-            Score score = Obj.getScore(Player.getName());
-            score.setScore(1);
+            Player.addScoreboardTag(sb.getEntryTeam(Sender.getName()).getPrefix());
             //Sender.sendMessage(String.valueOf(score.getScore()));
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                score.setScore(0);
+                Player.removeScoreboardTag(sb.getEntryTeam(Sender.getName()).getPrefix());
             }, 600L);
         }
     }
     public void accept(CommandSender Sender) {
         Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
-        Set<Team> Teams = sb.getTeams();
-        int n = Teams.size();
-        Team Teamsa[] = new Team[n];
-        Teamsa = Teams.toArray(Teamsa);
-        Integer x = 0;
-        Sender.sendMessage(String.valueOf(Teamsa.length));
-        Sender.sendMessage(Teamsa.toString());
-        while(x <= Teamsa.length) {
-            Team Select = Teamsa[x];
-            Objective Obj = sb.getObjective(Select.getName());
-            Sender.sendMessage(Select.getName());
-            if(Obj == null) {
-                Sender.sendMessage("No invites found.");
-                x = x + 1;
-            } else {
-                Score score = Obj.getScore(Sender.getName());
-                if(score.getScore() == 1) {
-                    score.setScore(0);
-                    Sender.sendMessage("You have successfully joined the team: " + ChatColor.BLUE + Select.getDisplayName());
-                    Select.addEntry(Sender.getName());
-                    x = x + 500;
-                } else {
-                    x = x + 1;
+        if(sb.getEntryTeam(Sender.getName()) == null) {
+            Player player = Bukkit.getPlayerExact(Sender.getName());
+            Set<String> tags = player.getScoreboardTags();
+            Set<Team> teams = sb.getTeams();
+            Team[] teamsa = teams.toArray(new Team[0]);
+            int x = 0;
+            if(teams.isEmpty() == false) {
+                while(x <= teamsa.length) {
+                    if(tags.contains(teamsa[x].getPrefix())) {
+                        teamsa[x].addEntry(Sender.getName());
+                        Sender.sendMessage(ChatColor.GOLD + "You have successfully joined the team " + teamsa[x].getDisplayName() + "!");
+                        break;
+                    } else {
+                        x = x + 1;
+                    }
                 }
+            } else {
+                Sender.sendMessage(ChatColor.RED + "There are currently no teams, create one using /n create.");
             }
         }
     }
     public void disband(CommandSender Sender) {
         Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
         try {
-            Team team = sb.getEntryTeam(Sender.getName());
-            sb.getObjective(team.getDisplayName()).unregister();
-            String teamName = team.getDisplayName();
-            team.unregister();
-            Sender.sendMessage(ChatColor.GREEN + "Team " + teamName + " successfully disbanded!");
+            if(Bukkit.getPlayerExact(Sender.getName()).getScoreboardTags().contains("nleader") == true) {
+                Team team = sb.getEntryTeam(Sender.getName());
+                sb.getObjective(team.getDisplayName()).unregister();
+                String teamName = team.getDisplayName();
+                team.unregister();
+                Bukkit.getPlayerExact(Sender.getName()).removeScoreboardTag("nleader");
+                Sender.sendMessage(ChatColor.GREEN + "Team " + teamName + " successfully disbanded!");
+            } else {
+                Sender.sendMessage(ChatColor.RED + "You are not the nations leader!");
+            }
         } catch (Exception IllegalArgumentException) {
             Sender.sendMessage(ChatColor.RED + "You are not part of a team!");
         }
@@ -198,15 +201,40 @@ public class CommandNation implements CommandExecutor {
     public void leave(CommandSender Sender) {
         Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
         try {
-            Team team = sb.getEntryTeam(Sender.getName());
-            if(team.getSize() == 1) {
-                disband(Sender);
-                Sender.sendMessage(ChatColor.GOLD + "You were the last person on that team and it is being removed.");
+            if(Bukkit.getPlayerExact(Sender.getName()).getScoreboardTags().contains("nleader") == false) {
+                Team team = sb.getEntryTeam(Sender.getName());
+                if (team.getSize() == 1) {
+                    disband(Sender);
+                    Sender.sendMessage(ChatColor.GOLD + "You were the last person on that team and it is being removed.");
+                } else {
+                    team.removeEntry(Sender.getName());
+                }
             } else {
-                team.removeEntry(Sender.getName());
+                Sender.sendMessage(ChatColor.RED + "You are the leader of the team, you cannot leave unless you transfer ownership or simply disband the faction.");
             }
         } catch (Exception IllegalArgumentException) {
             Sender.sendMessage(ChatColor.RED + "You are not part of a team!");
+        }
+    }
+    public void promote(CommandSender Sender, String Pn) {
+        Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+        Player SenderP = Bukkit.getPlayerExact(Sender.getName());
+        if (SenderP.getScoreboardTags().contains("nleader")) {
+            Player player = Bukkit.getPlayerExact(Pn);
+            if(player == null) {
+                Sender.sendMessage("Player does not exist, make sure the name is correct.");
+            } else {
+                if (sb.getEntryTeam(player.getName()) == sb.getEntryTeam(Sender.getName())) {
+                    Sender.sendMessage(ChatColor.GOLD + "You have promoted" + Pn);
+                    SenderP.removeScoreboardTag("nleader");
+                    player.addScoreboardTag("nleader");
+                    player.sendMessage(ChatColor.GOLD + "You have been promoted to nation leader of '" + sb.getEntryTeam(player.getName()).getDisplayName() + "' by '" + Sender.getName() + "'!");
+                } else {
+                    Sender.sendMessage(ChatColor.RED + "This player is not a part of your team!");
+                }
+            }
+        } else {
+            Sender.sendMessage(ChatColor.RED + "You must be the leader of a team to change the leader.");
         }
     }
 }
